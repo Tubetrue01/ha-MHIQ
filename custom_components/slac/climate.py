@@ -80,7 +80,7 @@ async def async_setup_entry(
         async_add_entities(entities)
 
     entity_registry = er.async_get(hass)
-    old_unique_ids = {f"{iot_id}_Info{addr}" for addr in range(9)}
+    old_unique_ids = {f"{iot_id}_Info{d.get('internalAddress', i)}" for i, d in enumerate(coordinator.devices)}
     _to_remove = [
         entity_id
         for entity_id, e_entry in entity_registry.entities.items()
