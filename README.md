@@ -12,7 +12,7 @@
 
 - 品牌：三菱重工海尔
 - 配套 APP：三菱智能空调 (SLAC)
-- 每个 WiFi 模块支持最多 **9 台室内机**（含地暖模块）
+- 每个 WiFi 模块支持多台室内机（含地暖模块，具体数量取决于您的设备配置）
 
 ## 功能特性
 
@@ -55,10 +55,10 @@
 
 ### 空调 (Climate)
 
-每台室内机对应一个 climate 实体：
+每台室内机对应一个 climate 实体，根据实际设备动态创建：
 
-- `climate.slac_ac_0` — 地暖模块
-- `climate.slac_ac_1` ~ `climate.slac_ac_8` — 室内机
+- `climate.slac_ac_{addr}` — 室内机 (addr 为内部地址)
+- 地暖模块同样作为 climate 实体
 
 ### 开关 (Switch)
 
