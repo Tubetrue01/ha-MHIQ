@@ -1,236 +1,114 @@
-# MHIQ — Mitsubishi Smart AC
+# 三菱智能空调 Home Assistant 集成
 
 [![HACS Validation](https://img.shields.io/badge/HACS-Custom-orange)](https://hacs.xyz)
 [![HA Version](https://img.shields.io/badge/Home%20Assistant-2024.1-blue)](https://www.home-assistant.io)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-[![GitHub](https://img.shields.io/badge/GitHub-C3H3--AI-blue)](https://github.com/C3H3-AI/ha-MHIQ)
 
-Home Assistant custom integration for **Mitsubishi Heavy Industries Haier (三菱重工海尔)** smart air conditioners using the **SC-MIAS-W3M** WiFi module.
+通过本集成，您可以在 Home Assistant 中控制 **三菱重工海尔** 智能空调。
 
-> **Model**: SC-MIAS-W3M (三菱重工海尔 WiFi module)
-> **Brand**: MHIQ — Mitsubishi Heavy Industries Haier (三菱重工海尔)
-> **App**: SLAC (三菱智能空调)
-> **Connection**: Cloud Polling (API)
+## 硬件支持
 
----
+本集成适用于使用 **SC-MIAS-W3M** WiFi 模块的空调设备：
 
-## Features
+- 品牌：三菱重工海尔
+- 配套 APP：三菱智能空调 (SLAC)
+- 每个 WiFi 模块支持最多 **9 台室内机**（含地暖模块）
 
-- Control up to **9 air conditioner units** (8 indoor + 1 floor heating module) through a single WiFi module
-- Full climate control: mode (cool/heat/fan/dry/auto), temperature, fan speed, swing, preset
-- **Floor heating** support (addr=0): power on/off, temperature control
-- **Preset modes**: 自清洁 / 热除菌 / 舒适风
-- **Horizontal swing**: 自动 / 位置1-4
-- Real-time temperature readings for each indoor unit
-- Individual entities for **fresh air** and **auxiliary electricity** control per unit
-- **Water pump** status monitoring per unit
-- **Error code** and **control mode** sensors per unit
-- Built-in **weather service** (optional): outdoor temperature, humidity, wind, air quality, PM2.5
-- Config Flow setup via **phone number + password** login
-- Supports **Chinese mainland phone numbers**
-- Auto token refresh (19h cycle, refresh when <1h remaining)
-- Auto re-login on token expiry
-- Pure Python RSA encryption (no external crypto dependency)
-- Options Flow to toggle weather service on/off without reinstall
+## 功能特性
 
-> **Note**: MQTT push channel is currently sealed (connection instability with RC=128). API polling at 10s interval is used instead. MQTT code is preserved in codebase for future restoration.
+- 控制所有室内机：开关、温度、模式、风速、摆叶
+- 支持模式：制冷 / 制热 / 除湿 / 送风 / 自动
+- 地暖模块支持（addr=0）
+- 预设模式：自清洁 / 热除菌 / 舒适风
+- 新风控制、辅热控制（独立开关实体）
+- 水泵状态监测
+- 故障码、控制模式传感器
+- 可选天气服务（室外温度、空气质量等）
+- Token 自动刷新，无需担心过期
+- 手机号 + 密码登录，开箱即用
 
----
+## 安装
 
-## Hardware
+### 方式一：HACS 安装（推荐）
 
-| Component | Description |
-|-----------|-------------|
-| **WiFi Module** | SC-MIAS-W3M, manufactured by Mitsubishi Heavy Industries Haier |
-| **Communication** | Cloud-based (WiFi module connects to manufacturer's IoT cloud) |
-| **Units** | Up to 9 indoor units per module (including floor heating) |
-| **Network** | Standard 2.4GHz WiFi |
+1. 打开 **HACS → 集成 → 自定义仓库**
+2. 添加仓库地址：`https://github.com/C3H3-AI/ha-MHIQ`
+3. 类别选择：**集成**
+4. 点击 **下载**
+5. 重启 Home Assistant
 
----
+### 方式二：手动安装
 
-## Installation
+1. 将 `custom_components/slac/` 目录复制到 HA 的 `config/custom_components/` 目录
+2. 重启 Home Assistant
+3. 进入 **设置 → 设备与服务 → 添加集成**
+4. 搜索 "三菱智能空调" 或 "SLAC"
 
-### HACS (Custom Repository)
+## 配置
 
-1. Open HACS → Integrations → Custom repositories
-2. Add this repository URL: `https://github.com/C3H3-AI/ha-MHIQ`
-3. Category: **Integration**
-4. Click **Download**
-5. Restart Home Assistant
+1. 输入您的**中国大陆手机号**
+2. 输入您的**三菱智能空调 APP 密码**
+3. 如需天气服务，可开启并填写所在地区
+4. 点击提交完成配置
 
-### Manual
+## 实体说明
 
-1. Copy the `custom_components/slac/` directory to your HA `config/custom_components/` directory
-2. Restart Home Assistant
-3. Go to Settings → Devices & Services → Add Integration
-4. Search for "Mitsubishi Smart AC" or "SLAC"
+### 空调 (Climate)
 
----
+每台室内机对应一个 climate 实体：
 
-## Configuration
+- `climate.slac_ac_0` — 地暖模块
+- `climate.slac_ac_1` ~ `climate.slac_ac_8` — 室内机
 
-### Step 1: Phone Login
+### 开关 (Switch)
 
-1. Enter your Chinese mainland phone number
-2. Enter your SLAC app password
-3. Enable "Weather service" if desired (requires location)
-4. Click Submit
+| 实体 | 说明 |
+|------|------|
+| `switch.slac_fresh_air_{addr}` | 新风开关 |
+| `switch.slac_auxiliary_electricity_{addr}` | 辅热开关 |
 
-### Step 2: Location (Weather Only)
+### 传感器 (Sensor)
 
-If you enabled weather service and left location fields empty, the integration will attempt to auto-detect your location based on your Home Assistant public IP. If detection fails, weather is silently disabled.
+| 实体 | 说明 |
+|------|------|
+| `sensor.slac_error_{addr}` | 故障码 |
+| `sensor.slac_control_mode_{addr}` | 控制模式（本地/远程） |
+| `sensor.slac_type_code_{addr}` | 设备型号 |
+| `sensor.slac_weather_*` | 天气信息（可选） |
 
-Alternatively, manually enter:
+### 二值传感器 (Binary Sensor)
 
-| Field | Description | Example |
-|-------|-------------|---------|
-| Province | Province name | Jiangsu |
-| City | City name | Nanjing |
-| District | District/county | Gulou |
+| 实体 | 说明 |
+|------|------|
+| `binary_sensor.slac_online_module` | WiFi 模块在线状态 |
+| `binary_sensor.slac_online_{addr}` | 设备在线状态 |
+| `binary_sensor.slac_water_pump_{addr}` | 水泵运行状态 |
 
-### Post-Install Options
+## 常见问题
 
-After installation, go to **Configure** to:
+**Q: 支持哪些型号的空调？**
+A: 使用 SLAC APP 管理的三菱重工海尔空调，搭配 SC-MIAS-W3M WiFi 模块。
 
-| Option | Description |
-|--------|-------------|
-| Toggle weather | Enable/disable weather sensors |
-| Update location | Change province/city/district |
-| Re-login | Update phone/password |
+**Q: 一个账号可以控制多个 WiFi 模块吗？**
+A: 可以。同一个账号下所有设备都会自动发现。
 
----
+**Q: 为什么需要手机号和密码？**
+A: 本集成通过官方 API 与厂商云服务通信，需要您的账号进行认证。密码仅存储在本地，不会上传到任何第三方服务器。
 
-## Entities
+**Q: 实体状态多久更新一次？**
+A: 每 10 秒轮询一次。
 
-### Climate (per unit)
+**Q: 可以不开启天气服务吗？**
+A: 可以。天气服务为可选功能，安装时或后续配置中均可关闭。
 
-Each unit identified by its internal address (0-8).
+## 致谢
 
-| Entity ID Pattern | Description |
-|-------------------|-------------|
-| `climate.slac_ac_0` | Floor heating module |
-| `climate.slac_ac_1` ~ `climate.slac_ac_8` | Indoor units |
+- 作者：[C3H3-AI](https://github.com/C3H3-AI)
 
-**Supported HVAC Modes** (indoor): off, cool, heat, fan_only, dry, auto
-**Supported HVAC Modes** (floor): off, heat
+## 许可证
 
-**Features** (indoor only): fan mode, swing mode, preset mode (自清洁/热除菌/舒适风)
+本项目基于 [MIT License](LICENSE) 开源。
 
-### Sensor (per unit)
+## 免责声明
 
-| Entity ID Pattern | Description | Unit |
-|-------------------|-------------|------|
-| `sensor.slac_error_{addr}` | Error code | - |
-| `sensor.slac_control_mode_{addr}` | Control mode (local/remote) | - |
-| `sensor.slac_type_code_{addr}` | Device type code (indoor only) | - |
-
-### Sensor (Weather - Optional)
-
-Enabled only if weather service is toggled on.
-
-| Entity ID Pattern | Description | Unit |
-|-------------------|-------------|------|
-| `sensor.slac_weather_location` | Weather location | - |
-| `sensor.slac_weather_outdoor_temp` | Outdoor temperature | °C |
-| `sensor.slac_weather_cond` | Weather condition | - |
-| `sensor.slac_weather_air_quality` | Air quality | - |
-| `sensor.slac_weather_pm25` | PM2.5 | µg/m³ |
-| `sensor.slac_weather_temp_max` | Max temperature | °C |
-| `sensor.slac_weather_temp_min` | Min temperature | °C |
-| `sensor.slac_weather_comfort` | Comfort level | - |
-| `sensor.slac_weather_wind` | Wind level | - |
-
-### Switch (per indoor unit, addr 1-8)
-
-| Entity ID Pattern | Description |
-|-------------------|-------------|
-| `switch.slac_fresh_air_{addr}` | Fresh air control |
-| `switch.slac_auxiliary_electricity_{addr}` | Auxiliary electricity (heat) control |
-
-### Binary Sensor
-
-| Entity ID Pattern | Description |
-|-------------------|-------------|
-| `binary_sensor.slac_online_module` | WiFi module online status |
-| `binary_sensor.slac_online_{addr}` | Sub-device online status (all units) |
-| `binary_sensor.slac_water_pump_{addr}` | Water pump running status (indoor only) |
-
-### Entity Count Summary
-
-| Platform | Count | Weather Disabled |
-|----------|-------|------------------|
-| climate | 9 | 9 |
-| sensor | 26 + 10 weather = 36 | 26 |
-| switch | 16 | 16 |
-| binary_sensor | 18 | 18 |
-| **Total** | **79** | **69** |
-
----
-
-## Architecture
-
-### Polling Model
-
-The integration uses **cloud polling** at 10-second intervals. Each poll:
-
-1. Checks token expiry (refresh if <1h remaining)
-2. Fetches device list (single API call for all units)
-3. Fetches all device properties in a **single API call** (all 9 units share the same `iotId`)
-4. Optionally fetches weather data
-
-### Token Lifecycle
-
-1. **Login**: Phone + password → RSA encrypted → OA auth → get `identityId` + `refreshToken` + `iotToken`
-2. **Refresh**: When `iotToken` has <1h remaining (≈19h after issuance), auto-refresh via `createSessionByAuthCode`
-3. **Re-login**: If both token and refresh fail, auto re-login with stored credentials
-
-### Dependencies
-
-- `aiohttp` (async HTTP, built-in with HA)
-- Pure Python RSA encryption (no `cryptography` library required)
-- `paho-mqtt` (kept as optional, MQTT currently sealed)
-
----
-
-## Credits
-
-- **Author**: [C3H3-AI](https://github.com/C3H3-AI)
-- **Reverse Engineering**: Frida + apktool + MuMu emulator
-
----
-
-## Changelog
-
-### v1.2.0 (2026-08-08)
-
-- ✅ Switched to cloud polling (10s interval), MQTT sealed due to connection instability
-- ✅ Removed `cryptography` dependency, pure Python RSA implementation
-- ✅ Optimized property fetch: single API call for all 9 units
-- ✅ Token refresh: 19h cycle (refresh when <1h remaining)
-- ✅ Added floor heating support (addr=0)
-- ✅ Added preset modes: 自清洁 / 热除菌 / 舒适风
-- ✅ Added horizontal swing control
-- ✅ Water pump status as binary sensor
-- ✅ Fresh air / auxiliary electricity as independent switches
-- ✅ Auto re-login on token expiry
-- ✅ Entity IDs stabilized with consistent naming
-
-### v1.1.0 (2026-07-28)
-
-- ✅ Initial stable release
-- ✅ Climate control: temperature, mode, fan speed
-- ✅ Phone + password login
-- ✅ Weather service (optional)
-- ✅ Config flow + options flow
-
----
-
-## License
-
-MIT License
-
----
-
-## Disclaimer
-
-This integration is an independent, community-developed project. It is not affiliated with, endorsed by, or officially supported by Mitsubishi Heavy Industries Haier or any of its subsidiaries. Use at your own risk.
+本集成为社区独立开发，与三菱重工海尔及其子公司无任何关联、授权或官方支持。使用本集成所产生的一切后果由使用者自行承担。
