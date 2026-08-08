@@ -146,9 +146,6 @@
       "sub_online": {
         "name": "Online"
       },
-      "mqtt_online": {
-        "name": "MQTT connection"
-      },
       "water_pump": {
         "name": "Water pump"
       }

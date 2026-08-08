@@ -146,9 +146,6 @@
       "sub_online": {
         "name": "在线状态"
       },
-      "mqtt_online": {
-        "name": "MQTT连接状态"
-      },
       "water_pump": {
         "name": "水泵"
       }

@@ -6,6 +6,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -30,8 +31,6 @@ async def async_setup_entry(
             break
     if first_iot_id:
         entities.append(SlacModuleOnlineBinarySensor(coordinator, first_iot_id))
-        # === MQTT 已封存，MQTT 在线状态永远为离线 ===
-        # entities.append(SlacMqttOnlineBinarySensor(coordinator, first_iot_id))
         _LOGGER.info("SLAC binary_sensor adding WiFi module online indicator: %s", first_iot_id)
 
     for device in coordinator.devices:
@@ -48,6 +47,17 @@ async def async_setup_entry(
     _LOGGER.info("SLAC binary_sensor creating %d entities", len(entities))
     if entities:
         async_add_entities(entities)
+
+    entity_registry = er.async_get(hass)
+    _to_remove = [
+        entity_id
+        for entity_id, e_entry in entity_registry.entities.items()
+        if e_entry.platform == DOMAIN and e_entry.domain == "binary_sensor"
+        and e_entry.unique_id == "slac_mqtt_online"
+    ]
+    for entity_id in _to_remove:
+        _LOGGER.info("Removing deprecated MQTT online entity: %s", entity_id)
+        entity_registry.async_remove(entity_id)
 
 
 class SlacModuleOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
@@ -111,34 +121,6 @@ class SlacSubOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def icon(self) -> str:
         return "mdi:wifi" if self.is_on else "mdi:wifi-off"
-
-
-class SlacMqttOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    _attr_has_entity_name = True
-
-    def __init__(
-        self,
-        coordinator: SlacCoordinator,
-        iot_id: str,
-    ) -> None:
-        super().__init__(coordinator)
-        self._iot_id = iot_id
-
-        self._attr_unique_id = "slac_mqtt_online"
-        self._attr_translation_key = "mqtt_online"
-        self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, iot_id)},
-        }
-
-    @property
-    def is_on(self) -> bool:
-        mqtt = getattr(self.coordinator, "mqtt_client", None)
-        return mqtt is not None and mqtt.is_connected
-
-    @property
-    def icon(self) -> str:
-        return "mdi:signal-cellular-3" if self.is_on else "mdi:signal-off"
 
 
 class SlacWaterPumpBinarySensor(CoordinatorEntity, BinarySensorEntity):
