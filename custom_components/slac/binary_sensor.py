@@ -30,6 +30,8 @@ async def async_setup_entry(
             break
     if first_iot_id:
         entities.append(SlacModuleOnlineBinarySensor(coordinator, first_iot_id))
+        # === MQTT 已封存，MQTT 在线状态永远为离线 ===
+        # entities.append(SlacMqttOnlineBinarySensor(coordinator, first_iot_id))
         _LOGGER.info("SLAC binary_sensor adding WiFi module online indicator: %s", first_iot_id)
 
     for device in coordinator.devices:
@@ -40,6 +42,8 @@ async def async_setup_entry(
             continue
         nick = device.get("nickName", "") or device.get("deviceName", "") or f"设备{internal_addr}"
         entities.append(SlacSubOnlineBinarySensor(coordinator, iot_id, internal_addr, unit_key, nick))
+        if internal_addr != 0:
+            entities.append(SlacWaterPumpBinarySensor(coordinator, iot_id, internal_addr, unit_key, nick))
 
     _LOGGER.info("SLAC binary_sensor creating %d entities", len(entities))
     if entities:
@@ -90,7 +94,7 @@ class SlacSubOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._unit_key = unit_key
 
         self._attr_unique_id = f"slac_online_{internal_addr}"
-        self._attr_name = "在线状态"
+        self._attr_translation_key = "sub_online"
         self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{iot_id}_ac_{internal_addr}")},
@@ -107,3 +111,68 @@ class SlacSubOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def icon(self) -> str:
         return "mdi:wifi" if self.is_on else "mdi:wifi-off"
+
+
+class SlacMqttOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: SlacCoordinator,
+        iot_id: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self._iot_id = iot_id
+
+        self._attr_unique_id = "slac_mqtt_online"
+        self._attr_translation_key = "mqtt_online"
+        self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, iot_id)},
+        }
+
+    @property
+    def is_on(self) -> bool:
+        mqtt = getattr(self.coordinator, "mqtt_client", None)
+        return mqtt is not None and mqtt.is_connected
+
+    @property
+    def icon(self) -> str:
+        return "mdi:signal-cellular-3" if self.is_on else "mdi:signal-off"
+
+
+class SlacWaterPumpBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: SlacCoordinator,
+        iot_id: str,
+        internal_addr: int,
+        unit_key: str,
+        nick: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self._iot_id = iot_id
+        self._internal_addr = internal_addr
+        self._unit_key = unit_key
+
+        self._attr_unique_id = f"slac_water_pump_{internal_addr}"
+        self._attr_translation_key = "water_pump"
+        self._attr_device_class = BinarySensorDeviceClass.RUNNING
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, f"{iot_id}_ac_{internal_addr}")},
+        }
+
+    @property
+    def _props(self) -> dict:
+        return self.coordinator.device_properties.get(self._iot_id, {}).get(self._unit_key, {})
+
+    @property
+    def is_on(self) -> bool:
+        props = self._props
+        return props.get("WaterPump", 0) == 1
+
+    @property
+    def icon(self) -> str:
+        return "mdi:pump" if self.is_on else "mdi:pump-off"

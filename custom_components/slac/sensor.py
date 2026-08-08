@@ -35,8 +35,11 @@ async def async_setup_entry(
         nick = device.get("nickName", "") or device.get("deviceName", "") or f"设备{internal_addr}"
         if unit_key in coordinator.device_properties.get(iot_id, {}):
             entities.append(SlacErrorCodeSensor(coordinator, iot_id, internal_addr, unit_key, nick))
+            entities.append(SlacControllModeSensor(coordinator, iot_id, internal_addr, unit_key, nick))
+            if internal_addr != 0:
+                entities.append(SlacTypeCodeSensor(coordinator, iot_id, internal_addr, unit_key, nick))
 
-    _LOGGER.info("SLAC sensor creating %d ErrorCode sensors", len(entities))
+    _LOGGER.info("SLAC sensor creating %d device sensors (ErrorCode, ControlMode, TypeCode)", len(entities))
 
     if entry.data.get(CONF_ENABLE_WEATHER, True):
         weather_sensors = [
@@ -99,6 +102,74 @@ class SlacErrorCodeSensor(CoordinatorEntity, SensorEntity):
         return "mdi:check-circle"
 
 
+class SlacControllModeSensor(CoordinatorEntity, SensorEntity):
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: SlacCoordinator,
+        iot_id: str,
+        internal_addr: int,
+        unit_key: str,
+        nick: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self._iot_id = iot_id
+        self._internal_addr = internal_addr
+        self._unit_key = unit_key
+
+        self._attr_unique_id = f"slac_control_mode_{internal_addr}"
+        self._attr_translation_key = "control_mode"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, f"{iot_id}_ac_{internal_addr}")},
+        }
+
+    @property
+    def _props(self) -> dict:
+        return self.coordinator.device_properties.get(self._iot_id, {}).get(self._unit_key, {})
+
+    @property
+    def native_value(self) -> Any:
+        props = self._props
+        return props.get("ControllMode", 0)
+
+    @property
+    def icon(self) -> str:
+        return "mdi:remote" if self.native_value else "mdi:remote-off"
+
+
+class SlacTypeCodeSensor(CoordinatorEntity, SensorEntity):
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: SlacCoordinator,
+        iot_id: str,
+        internal_addr: int,
+        unit_key: str,
+        nick: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self._iot_id = iot_id
+        self._internal_addr = internal_addr
+        self._unit_key = unit_key
+
+        self._attr_unique_id = f"slac_type_code_{internal_addr}"
+        self._attr_translation_key = "type_code"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, f"{iot_id}_ac_{internal_addr}")},
+        }
+
+    @property
+    def _props(self) -> dict:
+        return self.coordinator.device_properties.get(self._iot_id, {}).get(self._unit_key, {})
+
+    @property
+    def native_value(self) -> Any:
+        props = self._props
+        return props.get("TypeCode", -1)
+
+
 class SlacWeatherSensor(CoordinatorEntity, SensorEntity):
     _attr_has_entity_name = True
 
@@ -159,8 +230,8 @@ class SlacWeatherSensor(CoordinatorEntity, SensorEntity):
             return {}
         attrs = {}
         if self._key == "outdoor_temp":
-            attrs["最高温度"] = weather.get("tmp_max")
-            attrs["最低温度"] = weather.get("tmp_min")
-            attrs["天气"] = weather.get("cond_txt")
-            attrs["空气质量"] = weather.get("qlty")
+            attrs["max_temp"] = weather.get("tmp_max")
+            attrs["min_temp"] = weather.get("tmp_min")
+            attrs["condition"] = weather.get("cond_txt")
+            attrs["air_quality"] = weather.get("qlty")
         return attrs

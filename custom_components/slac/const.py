@@ -71,8 +71,22 @@ HVAC_ACTION_MAP = {
     4: "drying",
 }
 
-COORDINATOR_UPDATE_INTERVAL = 30
+COORDINATOR_UPDATE_INTERVAL = 10
 
-# Token 刷新策略：每6小时主动刷新一次（token有效期20h），确保永不过期
-# 这样即使一次刷新失败，还有14小时窗口重试
-TOKEN_REFRESH_INTERVAL = 6 * 3600  # 6小时
+# Token 刷新策略：token 有效期20h（服务器返回 iotTokenExpire=72000s），
+# 当剩余时间 < 1h 时触发刷新，确保永不过期且预留充足重试时间
+# ⚠️ 20h 有效期未经长时间验证，如遇 token 过期报错，可适当调大此值
+TOKEN_REFRESH_INTERVAL = 1 * 3600  # 提前1小时刷新（即19小时刷新）
+
+# ---- MQTT 配置 ----
+# 来自逆向分析（MqttConfigure.java, b.java）
+# Broker: public.iot-as-mqtt.cn-shanghai.aliyuncs.com:1883
+CONF_MQTT_ENABLED = "mqtt_enabled"
+CONF_MQTT_PRODUCT_KEY = "mqtt_product_key"
+CONF_MQTT_DEVICE_NAME = "mqtt_device_name"
+CONF_MQTT_DEVICE_SECRET = "mqtt_device_secret"
+
+# MQTT 连接参数（与 MqttConfigure.java 一致）
+MQTT_CONNECT_TIMEOUT = 10  # 10 秒连接超时（setConnectionTimeout(10)）
+MQTT_KEEPALIVE = 65       # 与 App 一致的 KeepAlive 间隔（65s）
+MQTT_SECURE_MODE = 2      # 2=TLS (默认), 3=TCP（来自 MqttConfigure.SECURE_MODE）

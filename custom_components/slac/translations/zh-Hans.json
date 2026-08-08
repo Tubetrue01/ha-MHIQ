@@ -76,6 +76,15 @@
         "data": {
           "enable_weather": "启用天气服务"
         }
+      },
+      "mqtt": {
+        "title": "MQTT 配置",
+        "description": "输入通过 Frida 或抓包获取的 MQTT 连接参数",
+        "data": {
+          "mqtt_product_key": "Product Key",
+          "mqtt_device_name": "Device Name",
+          "mqtt_device_secret": "Device Secret"
+        }
       }
     },
     "error": {
@@ -114,6 +123,12 @@
       },
       "error_code": {
         "name": "故障码"
+      },
+      "control_mode": {
+        "name": "控制模式"
+      },
+      "type_code": {
+        "name": "设备类型码"
       }
     },
     "switch": {
@@ -130,6 +145,12 @@
       },
       "sub_online": {
         "name": "在线状态"
+      },
+      "mqtt_online": {
+        "name": "MQTT连接状态"
+      },
+      "water_pump": {
+        "name": "水泵"
       }
     }
   }

@@ -76,6 +76,15 @@
         "data": {
           "enable_weather": "Enable weather service"
         }
+      },
+      "mqtt": {
+        "title": "MQTT Configuration",
+        "description": "Enter MQTT connection parameters obtained via Frida or packet capture",
+        "data": {
+          "mqtt_product_key": "Product Key",
+          "mqtt_device_name": "Device Name",
+          "mqtt_device_secret": "Device Secret"
+        }
       }
     },
     "error": {
@@ -114,6 +123,12 @@
       },
       "error_code": {
         "name": "Error code"
+      },
+      "control_mode": {
+        "name": "Control mode"
+      },
+      "type_code": {
+        "name": "Device type"
       }
     },
     "switch": {
@@ -130,6 +145,12 @@
       },
       "sub_online": {
         "name": "Online"
+      },
+      "mqtt_online": {
+        "name": "MQTT connection"
+      },
+      "water_pump": {
+        "name": "Water pump"
       }
     }
   }

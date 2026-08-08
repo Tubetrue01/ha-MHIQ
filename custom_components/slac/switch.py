@@ -98,7 +98,7 @@ class SlacToggleSwitch(CoordinatorEntity, SwitchEntity):
             self._attr_key: 1,
         }
         try:
-            await coordinator.api.async_set_properties(self._iot_id, items)
+            await coordinator.async_set_properties_mqtt(self._iot_id, items)
             self._local_state = True
             await coordinator.async_request_refresh()
         except Exception as e:
@@ -111,7 +111,7 @@ class SlacToggleSwitch(CoordinatorEntity, SwitchEntity):
             self._attr_key: 0,
         }
         try:
-            await coordinator.api.async_set_properties(self._iot_id, items)
+            await coordinator.async_set_properties_mqtt(self._iot_id, items)
             self._local_state = False
             await coordinator.async_request_refresh()
         except Exception as e:
