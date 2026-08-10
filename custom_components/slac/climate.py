@@ -255,7 +255,7 @@ class SlacClimate(CoordinatorEntity, ClimateEntity):
             if ac_mode is not None:
                 items["WorkMode"] = ac_mode
         try:
-            await coordinator.async_set_properties_mqtt(self._iot_id, items)
+            await coordinator.api.async_set_properties(self._iot_id, items)
             await coordinator.async_request_refresh()
         except Exception as e:
             _LOGGER.error("Failed to set HVAC mode: %s", e)
@@ -271,7 +271,7 @@ class SlacClimate(CoordinatorEntity, ClimateEntity):
             "TargetTemperature": temp,
         }
         try:
-            await coordinator.async_set_properties_mqtt(self._iot_id, items)
+            await coordinator.api.async_set_properties(self._iot_id, items)
             await coordinator.async_request_refresh()
         except Exception as e:
             _LOGGER.error("Failed to set temperature: %s", e)
@@ -281,7 +281,7 @@ class SlacClimate(CoordinatorEntity, ClimateEntity):
         coordinator: SlacCoordinator = self.coordinator
         items = {"InternalAddress": self._internal_addr, "PowerSwitch": 1, "WindSpeed": wind}
         try:
-            await coordinator.async_set_properties_mqtt(self._iot_id, items)
+            await coordinator.api.async_set_properties(self._iot_id, items)
             await coordinator.async_request_refresh()
         except Exception as e:
             _LOGGER.error("Failed to set fan mode: %s", e)
@@ -291,7 +291,7 @@ class SlacClimate(CoordinatorEntity, ClimateEntity):
         coordinator: SlacCoordinator = self.coordinator
         items = {"InternalAddress": self._internal_addr, "PowerSwitch": 1, "Horizontal": horizontal}
         try:
-            await coordinator.async_set_properties_mqtt(self._iot_id, items)
+            await coordinator.api.async_set_properties(self._iot_id, items)
             await coordinator.async_request_refresh()
         except Exception as e:
             _LOGGER.error("Failed to set swing mode: %s", e)
@@ -303,7 +303,7 @@ class SlacClimate(CoordinatorEntity, ClimateEntity):
         coordinator: SlacCoordinator = self.coordinator
         items = {"InternalAddress": self._internal_addr, "CleaningDegerming": cd_value}
         try:
-            await coordinator.async_set_properties_mqtt(self._iot_id, items)
+            await coordinator.api.async_set_properties(self._iot_id, items)
             await coordinator.async_request_refresh()
         except Exception as e:
             _LOGGER.error("Failed to set preset mode: %s", e)
