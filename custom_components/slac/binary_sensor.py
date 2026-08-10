@@ -6,7 +6,6 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -47,17 +46,6 @@ async def async_setup_entry(
     _LOGGER.info("SLAC binary_sensor creating %d entities", len(entities))
     if entities:
         async_add_entities(entities)
-
-    entity_registry = er.async_get(hass)
-    _to_remove = [
-        entity_id
-        for entity_id, e_entry in entity_registry.entities.items()
-        if e_entry.platform == DOMAIN and e_entry.domain == "binary_sensor"
-        and e_entry.unique_id == "slac_mqtt_online"
-    ]
-    for entity_id in _to_remove:
-        _LOGGER.info("Removing deprecated MQTT online entity: %s", entity_id)
-        entity_registry.async_remove(entity_id)
 
 
 class SlacModuleOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):

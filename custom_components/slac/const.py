@@ -78,15 +78,3 @@ COORDINATOR_UPDATE_INTERVAL = 10
 # ⚠️ 20h 有效期未经长时间验证，如遇 token 过期报错，可适当调大此值
 TOKEN_REFRESH_INTERVAL = 1 * 3600  # 提前1小时刷新（即19小时刷新）
 
-# ---- MQTT 配置 ----
-# 来自逆向分析（MqttConfigure.java, b.java）
-# Broker: public.iot-as-mqtt.cn-shanghai.aliyuncs.com:1883
-CONF_MQTT_ENABLED = "mqtt_enabled"
-CONF_MQTT_PRODUCT_KEY = "mqtt_product_key"
-CONF_MQTT_DEVICE_NAME = "mqtt_device_name"
-CONF_MQTT_DEVICE_SECRET = "mqtt_device_secret"
-
-# MQTT 连接参数（与 MqttConfigure.java 一致）
-MQTT_CONNECT_TIMEOUT = 10  # 10 秒连接超时（setConnectionTimeout(10)）
-MQTT_KEEPALIVE = 65       # 与 App 一致的 KeepAlive 间隔（65s）
-MQTT_SECURE_MODE = 2      # 2=TLS (默认), 3=TCP（来自 MqttConfigure.SECURE_MODE）

@@ -1,7 +1,6 @@
 """
 SLAC API 客户端 - 手机号密码登录模式
-登录后自动获取 identityId / refreshToken / iotToken
-MQTT 凭据自动发现（多层备选机制）"""
+登录后自动获取 identityId / refreshToken / iotToken"""
 import asyncio
 import base64
 import hashlib
@@ -32,21 +31,9 @@ API_GET_PROPERTIES = "/thing/properties/get"
 API_SET_PROPERTIES = "/thing/properties/set"
 API_GET_PRODUCT_INFO = "/thing/productInfo/getByAppKey"
 API_CUSTOM_DEVICE_LIST = "/devDevice/getDeviceList"
-API_GET_DEVICE_TOKEN = "/thing/deviceToken/get"
-
 REQUEST_TIMEOUT = 30
 MAX_RETRIES = 3
 TOKEN_EXPIRE_THRESHOLD = 1 * 3600  # 提前1小时刷新，与 const.py 一致
-
-# MQTT 备选凭据（通过 Frida 逆向分析获取）
-# 说明：listBindingByAccount 返回的绑定设备凭据不能用于 MQTT 连接，
-# APP 使用不同的产品级凭据进行 MQTT 通信。
-# ⚠️ 注意：deviceName 和 deviceSecret 在每次登录会话中重新生成，
-# 此处的备选值仅适用于当前登录会话，不能长期使用。
-# 如需恢复 MQTT，必须通过 createSessionByAuthCode 响应动态获取最新凭据。
-FALLBACK_MQTT_PRODUCT_KEY = "a10OB78iYMX"
-FALLBACK_MQTT_DEVICE_NAME = "VkjMFbl8WGHqeeeYe55ltS4LTnZfe5AY"
-FALLBACK_MQTT_DEVICE_SECRET = "8a7873aaf06c7ee9d59ac34ee1c0acf9"
 
 
 class SlacAuthError(Exception):
@@ -430,150 +417,6 @@ class SlacApi:
         if resp and "data" in resp:
             return resp
         return None
-
-    async def async_get_device_token(self, product_key: str, device_name: str) -> str | None:
-        """获取 MQTT 连接专用的 deviceToken
-
-        阿里云 IoT 平台的 getDeviceToken 接口，返回短期有效的 MQTT 访问令牌。
-        当 deviceSecret 不可用时，使用此 token 作为 MQTT 密码。
-        """
-        try:
-            body = make_iot_request_body(
-                api_ver="1.0.2",
-                params={"productKey": product_key, "deviceName": device_name},
-                iot_token=self._iot_token,
-            )
-            result = await self._iot_request(API_GET_DEVICE_TOKEN, body)
-            if result and isinstance(result, dict):
-                device_token = result.get("deviceToken") or result.get("data")
-                if device_token:
-                    _LOGGER.info("DeviceToken obtained for MQTT")
-                    return device_token
-            _LOGGER.warning("getDeviceToken returned no token: %s", str(result)[:200])
-            return None
-        except Exception as e:
-            _LOGGER.warning("Failed to get deviceToken: %s", e)
-            return None
-
-    async def async_get_mqtt_credentials(self) -> dict | None:
-        """获取 MQTT 连接所需的凭据（多层自动发现）
-
-        优先级（从高到低）：
-          1. 已存储的 MQTT 凭据（由 __init__.py 从 config entry 传入）
-          2. listBindingByAccount 返回的绑定设备凭据（含 deviceSecret 时优先使用）
-          3. getDeviceToken 获取的临时令牌（绑定设备无 deviceSecret 时尝试）
-          4. 备选凭据（Frida 逆向分析已验证可用的产品级凭据）
-          5. iotToken 作为最终回退
-
-        注意：测试验证绑定设备（productKey=a1nTjcwzY9r）的凭据不适合 MQTT，
-        需要 Fallback 到产品级凭据（productKey=a10OB78iYMX）才能成功连接。
-        """
-        try:
-            # 第1层：已存储的 MQTT 凭据（由外部传入）
-            stored_pk = getattr(self, '_stored_mqtt_pk', '')
-            stored_dn = getattr(self, '_stored_mqtt_dn', '')
-            stored_ds = getattr(self, '_stored_mqtt_ds', '')
-            if stored_pk and stored_dn and stored_ds:
-                _LOGGER.info("Using stored MQTT credentials: productKey=%s", stored_pk)
-                return {
-                    "productKey": stored_pk,
-                    "deviceName": stored_dn,
-                    "deviceSecret": stored_ds,
-                    "deviceToken": "",
-                    "iotToken": self._iot_token,
-                    "source": "stored",
-                }
-
-            # 第2层：从 listBindingByAccount 获取绑定设备凭据
-            binding_info = await self.async_list_binding_by_account()
-            if binding_info:
-                binding_data = binding_info.get("data", [])
-                if isinstance(binding_data, list) and binding_data:
-                    first = binding_data[0]
-                elif isinstance(binding_data, dict):
-                    first = binding_data
-                else:
-                    first = None
-
-                if isinstance(first, dict):
-                    product_key = first.get("productKey", "")
-                    device_name = first.get("deviceName", "")
-                    device_secret = first.get("deviceSecret", "")
-
-                    if product_key and device_name:
-                        if device_secret:
-                            _LOGGER.info(
-                                "Using binding device MQTT credentials (with secret): "
-                                "productKey=%s, deviceName=%s",
-                                product_key, device_name,
-                            )
-                            return {
-                                "productKey": product_key,
-                                "deviceName": device_name,
-                                "deviceSecret": device_secret,
-                                "deviceToken": "",
-                                "iotToken": self._iot_token,
-                                "source": "binding_secret",
-                            }
-
-                        # 第3层：尝试获取 deviceToken
-                        _LOGGER.info(
-                            "Binding device has no secret, trying getDeviceToken "
-                            "for %s/%s", product_key, device_name,
-                        )
-                        device_token = await self.async_get_device_token(product_key, device_name)
-                        if device_token:
-                            _LOGGER.info(
-                                "Using binding device MQTT credentials (with token)"
-                            )
-                            return {
-                                "productKey": product_key,
-                                "deviceName": device_name,
-                                "deviceSecret": "",
-                                "deviceToken": device_token,
-                                "iotToken": self._iot_token,
-                                "source": "binding_token",
-                            }
-
-                        _LOGGER.warning(
-                            "Binding device %s/%s has no secret and no token, "
-                            "will try fallback",
-                            product_key, device_name,
-                        )
-
-            # 第4层：备选凭据（Frida 逆向已验证可用）
-            _LOGGER.info(
-                "Using fallback MQTT credentials (from Frida analysis): "
-                "productKey=%s, deviceName=%s",
-                FALLBACK_MQTT_PRODUCT_KEY, FALLBACK_MQTT_DEVICE_NAME,
-            )
-            return {
-                "productKey": FALLBACK_MQTT_PRODUCT_KEY,
-                "deviceName": FALLBACK_MQTT_DEVICE_NAME,
-                "deviceSecret": FALLBACK_MQTT_DEVICE_SECRET,
-                "deviceToken": "",
-                "iotToken": self._iot_token,
-                "source": "fallback",
-            }
-
-        except Exception as e:
-            _LOGGER.warning("Failed to get MQTT credentials: %s", e)
-            # 异常时也尝试备选凭据
-            _LOGGER.info("Exception fallback to Frida credentials")
-            return {
-                "productKey": FALLBACK_MQTT_PRODUCT_KEY,
-                "deviceName": FALLBACK_MQTT_DEVICE_NAME,
-                "deviceSecret": FALLBACK_MQTT_DEVICE_SECRET,
-                "deviceToken": "",
-                "iotToken": self._iot_token,
-                "source": "fallback_exception",
-            }
-
-    def set_stored_mqtt_credentials(self, product_key: str, device_name: str, device_secret: str):
-        """设置已存储的 MQTT 凭据（由 __init__.py 从 config entry 传入）"""
-        self._stored_mqtt_pk = product_key
-        self._stored_mqtt_dn = device_name
-        self._stored_mqtt_ds = device_secret
 
     def set_credentials(self, identity_id: str, refresh_token: str):
         self._identity_id = identity_id

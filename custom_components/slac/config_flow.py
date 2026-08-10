@@ -13,9 +13,6 @@ from .const import (
     CONF_ENABLE_WEATHER,
     CONF_IDENTITY_ID,
     CONF_IOT_TOKEN,
-    CONF_MQTT_DEVICE_NAME,
-    CONF_MQTT_DEVICE_SECRET,
-    CONF_MQTT_PRODUCT_KEY,
     CONF_PASSWORD,
     CONF_PHONE,
     CONF_PROVINCE,
@@ -154,21 +151,16 @@ class SlacOptionsFlow(config_entries.OptionsFlow):
                 return await self.async_step_relogin()
             if action == "weather_toggle":
                 return await self.async_step_weather_toggle()
-            if action == "mqtt":
-                return await self.async_step_mqtt()
             return await self.async_step_location(None)
 
         current_weather = self.config_entry.data.get(CONF_ENABLE_WEATHER, True)
         weather_status = "已开启" if current_weather else "已关闭"
-        mqtt_configured = bool(self.config_entry.data.get(CONF_MQTT_PRODUCT_KEY))
-        mqtt_status = "已配置" if mqtt_configured else "未配置"
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
                 vol.Required("action", default="location"): vol.In({
                     "location": "设置天气地区",
                     "weather_toggle": f"天气服务（当前{weather_status}）",
-                    "mqtt": f"MQTT 配置（当前{mqtt_status}）",
                     "relogin": "重新登录（手机+密码）",
                 }),
             }),
@@ -197,29 +189,6 @@ class SlacOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(CONF_ENABLE_WEATHER, default=current): bool,
             }),
             description_placeholders={"current": "开启" if current else "关闭"},
-        )
-
-    async def async_step_mqtt(self, user_input: dict | None = None) -> FlowResult:
-        if user_input is not None:
-            data = dict(self.config_entry.data)
-            data[CONF_MQTT_PRODUCT_KEY] = user_input.get(CONF_MQTT_PRODUCT_KEY, "")
-            data[CONF_MQTT_DEVICE_NAME] = user_input.get(CONF_MQTT_DEVICE_NAME, "")
-            data[CONF_MQTT_DEVICE_SECRET] = user_input.get(CONF_MQTT_DEVICE_SECRET, "")
-            self.hass.config_entries.async_update_entry(self.config_entry, data=data)
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-            return self.async_create_entry(title="", data={})
-
-        current_product_key = self.config_entry.data.get(CONF_MQTT_PRODUCT_KEY, "")
-        current_device_name = self.config_entry.data.get(CONF_MQTT_DEVICE_NAME, "")
-        current_device_secret = self.config_entry.data.get(CONF_MQTT_DEVICE_SECRET, "")
-        return self.async_show_form(
-            step_id="mqtt",
-            data_schema=vol.Schema({
-                vol.Optional(CONF_MQTT_PRODUCT_KEY, default=current_product_key): TextSelector(TextSelectorConfig(type="text")),
-                vol.Optional(CONF_MQTT_DEVICE_NAME, default=current_device_name): TextSelector(TextSelectorConfig(type="text")),
-                vol.Optional(CONF_MQTT_DEVICE_SECRET, default=current_device_secret): TextSelector(TextSelectorConfig(type="text")),
-            }),
-            description_placeholders={"name": "MQTT 连接参数（通过 Frida 获取）"},
         )
 
     async def async_step_location(self, user_input: dict | None = None) -> FlowResult:

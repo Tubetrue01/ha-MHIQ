@@ -16,9 +16,6 @@ from .const import (
     CONF_ENABLE_WEATHER,
     CONF_IDENTITY_ID,
     CONF_IOT_TOKEN,
-    CONF_MQTT_PRODUCT_KEY,
-    CONF_MQTT_DEVICE_NAME,
-    CONF_MQTT_DEVICE_SECRET,
     CONF_PASSWORD,
     CONF_PHONE,
     CONF_PROVINCE,
@@ -27,8 +24,6 @@ from .const import (
     COORDINATOR_UPDATE_INTERVAL,
     DOMAIN,
 )
-# MQTT 客户端已封存，详见 docs/research/mqtt-research.md
-# from .mqtt import SlacMqttClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,13 +55,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     password = entry.data.get(CONF_PASSWORD, "")
     if phone and password:
         api.set_login_credentials(phone, password)
-    # === MQTT 已封存 ===
-    # stored_mqtt_pk = entry.data.get(CONF_MQTT_PRODUCT_KEY, "")
-    # stored_mqtt_dn = entry.data.get(CONF_MQTT_DEVICE_NAME, "")
-    # stored_mqtt_ds = entry.data.get(CONF_MQTT_DEVICE_SECRET, "")
-    # if stored_mqtt_pk and stored_mqtt_dn:
-    #     api.set_stored_mqtt_credentials(stored_mqtt_pk, stored_mqtt_dn, stored_mqtt_ds)
-    #     _LOGGER.info("Stored MQTT credentials loaded: productKey=%s", stored_mqtt_pk)
     stored_iot = entry.data.get(CONF_IOT_TOKEN, "")
     if stored_iot:
         # expires_in=0 标记为"不确定签发时间"，让 is_token_expiring() 兜底触发刷新
@@ -115,15 +103,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator = SlacCoordinator(hass, api, entry, devices)
 
-    # === MQTT 已封存（详见 docs/research/mqtt-research.md）===
-    # async def _mqtt_init_wrapper():
-    #     try:
-    #         mqtt_creds = await api.async_get_mqtt_credentials()
-    #         ...
-    #     except Exception as e:
-    #         _LOGGER.warning("MQTT init failed: %s", e)
-    # hass.async_create_background_task(_mqtt_init_wrapper(), "slac_mqtt_init")
-
     # 不阻塞 HA 启动，后台执行首次数据刷新
     async def _first_refresh_wrapper():
         try:
@@ -141,12 +120,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    # === MQTT 已封存 ===
-    # coordinator = hass.data[DOMAIN].get(entry.entry_id)
-    # if coordinator and hasattr(coordinator, 'mqtt_client') and coordinator.mqtt_client:
-    #     await coordinator.mqtt_client.async_disconnect()
-    #     _LOGGER.info("MQTT disconnected")
-
     unload_ok = await hass.config_entries.async_unload_platforms(entry, _get_platforms(entry))
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
@@ -166,12 +139,6 @@ class SlacCoordinator(DataUpdateCoordinator):
         self.devices: list[dict] = devices or []
         self.device_properties: dict[str, dict] = {}
         self.device_detail: dict = {}
-        # === MQTT 已封存 ===
-        # self.mqtt_client: SlacMqttClient | None = None
-        # self._mqtt_data: dict[str, dict] = {}
-        # self._mqtt_data_age: dict[str, float] = {}
-        # self._mqtt_was_connected: bool = False
-        # self._mqtt_retry_count: int = 0
 
     async def _async_update_data(self) -> dict:
         try:
@@ -189,10 +156,6 @@ class SlacCoordinator(DataUpdateCoordinator):
                     token_refreshed = True
                 except Exception as e:
                     _LOGGER.warning("Token refresh failed: %s", e)
-
-            # === MQTT 重连已封存 ===
-            # if self.api.iot_token:
-            #     ...
 
             if not self.api.iot_token and self.api.has_login_credentials():
                 _LOGGER.warning("Token unavailable, attempting auto re-login...")
@@ -235,10 +198,6 @@ class SlacCoordinator(DataUpdateCoordinator):
                             self.device_properties[iot_id] = parsed
                     except Exception as e:
                         _LOGGER.warning("Failed to get properties: %s", e)
-
-                # === MQTT 数据合并已封存 ===
-                # if self._mqtt_data:
-                #     ...
 
                 if iot_id and not getattr(self, '_log_props_dumped', False):
                     if iot_id in self.device_properties:
