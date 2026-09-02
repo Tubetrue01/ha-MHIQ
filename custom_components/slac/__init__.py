@@ -184,15 +184,16 @@ class SlacCoordinator(DataUpdateCoordinator):
                         if isinstance(props, dict):
                             parsed = {}
                             for key, val in props.items():
+                                # 处理 Info0, Info1... 的双层嵌套 JSON 字符串
                                 if isinstance(val, dict) and "value" in val:
-                                    try:
-                                        inner = json.loads(val["value"])
-                                        if isinstance(inner, dict):
-                                            parsed[key] = inner
-                                        else:
+                                    raw_val = val["value"]
+                                    if isinstance(raw_val, str):
+                                        try:
+                                            parsed[key] = json.loads(raw_val)
+                                        except (json.JSONDecodeError, TypeError):
                                             parsed[key] = val
-                                    except (json.JSONDecodeError, TypeError):
-                                        parsed[key] = val
+                                    else:
+                                        parsed[key] = raw_val
                                 else:
                                     parsed[key] = val
                             self.device_properties[iot_id] = parsed
@@ -205,7 +206,6 @@ class SlacCoordinator(DataUpdateCoordinator):
                         self._log_props_dumped = True
 
             weather = {}
-            # 仅在配置了地区时才请求天气 API，避免空参数白跑一次
             if self.api.province or self.api.city:
                 try:
                     weather = await self.api.async_get_weather(
@@ -223,11 +223,8 @@ class SlacCoordinator(DataUpdateCoordinator):
                     binding_info = await self.api.async_list_binding_by_account()
                     if binding_info and "data" in binding_info:
                         binding_data = binding_info["data"]
-                        _LOGGER.debug("listBindingByAccount data type: %s, len=%s", type(binding_data).__name__, len(binding_data) if hasattr(binding_data, '__len__') else 'N/A')
-                        # data 可能是列表（直接是绑定列表）或字典（含 data 字段）
                         if isinstance(binding_data, list) and binding_data:
                             first = binding_data[0]
-                            _LOGGER.debug("First item type: %s, keys=%s", type(first).__name__, list(first.keys()) if isinstance(first, dict) else 'not dict')
                             if isinstance(first, dict):
                                 self.device_detail = first
                                 _LOGGER.info("Got device detail: %s", self.device_detail.get("productName"))
@@ -239,7 +236,12 @@ class SlacCoordinator(DataUpdateCoordinator):
                 except Exception as e:
                     _LOGGER.debug("Device detail fetch failed: %s", e)
 
-            data = {"devices": self.devices, "properties": self.device_properties, "weather": weather, "device_detail": self.device_detail}
+            data = {
+                "devices": self.devices,
+                "properties": self.device_properties,
+                "weather": weather,
+                "device_detail": self.device_detail
+            }
             _LOGGER.info("Updated %d devices, %d properties, weather=%s",
                          len(self.devices), len(self.device_properties), bool(weather))
             return data
