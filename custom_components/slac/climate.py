@@ -53,13 +53,9 @@ async def async_setup_entry(
         if key in seen:
             continue
         seen.add(key)
-        props = coordinator.device_properties.get(iot_id, {})
-        if unit_key in props:
-            _LOGGER.info("SLAC climate adding entity: iot_id=%s unit_key=%s nick=%s", iot_id, unit_key, nick_name)
-            entities.append(SlacClimate(coordinator, entry, iot_id, nick_name, unit_key, device))
-        else:
-            _LOGGER.debug("SLAC climate skip %s: unit_key %s not in props keys=%s",
-                          nick_name, unit_key, list(props.keys()))
+
+        _LOGGER.info("SLAC climate adding entity: iot_id=%s unit_key=%s nick=%s", iot_id, unit_key, nick_name)
+        entities.append(SlacClimate(coordinator, entry, iot_id, nick_name, unit_key, device))
 
     if module_iot_id:
         device_registry = dr.async_get(hass)

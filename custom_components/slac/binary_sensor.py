@@ -36,12 +36,9 @@ async def async_setup_entry(
         iot_id = device.get("iotId", "")
         internal_addr = device.get("internalAddress", -1)
         unit_key = f"Info{internal_addr}"
-        if unit_key not in coordinator.device_properties.get(iot_id, {}):
-            continue
         nick = device.get("nickName", "") or device.get("deviceName", "") or f"设备{internal_addr}"
         entities.append(SlacSubOnlineBinarySensor(coordinator, iot_id, internal_addr, unit_key, nick))
-        if internal_addr != 0:
-            entities.append(SlacWaterPumpBinarySensor(coordinator, iot_id, internal_addr, unit_key, nick))
+        entities.append(SlacWaterPumpBinarySensor(coordinator, iot_id, internal_addr, unit_key, nick))
 
     _LOGGER.info("SLAC binary_sensor creating %d entities", len(entities))
     if entities:

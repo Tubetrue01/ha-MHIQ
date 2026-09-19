@@ -36,10 +36,6 @@ async def async_setup_entry(
         iot_id = device.get("iotId", "")
         internal_addr = device.get("internalAddress", -1)
         unit_key = f"Info{internal_addr}"
-        if unit_key not in coordinator.device_properties.get(iot_id, {}):
-            continue
-        if internal_addr == 0:
-            continue
         nick = device.get("nickName", "") or device.get("deviceName", "") or f"设备{internal_addr}"
         for switch_type, config in SWITCH_TYPES.items():
             entities.append(SlacToggleSwitch(coordinator, iot_id, internal_addr, unit_key, nick, switch_type, config))
