@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Any
 
@@ -16,6 +17,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SlacCoordinator
 from .const import (
+    PRODUCT_KEY,
     AC_MODE_HA_MAP,
     AC_TO_FAN_MODE,
     AC_TO_SWING_MODE,
@@ -88,11 +90,11 @@ async def async_setup_entry(
         entity_registry.async_remove(entity_id)
 
 
-def build_device_info(coordinator: SlacCoordinator, device: dict) -> dict:
+def build_device_info(coordinator: SlacCoordinator, device: dict, is_floor: bool) -> dict:
     iot_id = device.get("iotId", "")
     internal_addr = device.get("internalAddress", -1)
     nick_name = device.get("nickName", "") or device.get("deviceName", "") or "三菱空调"
-    is_floor = internal_addr == 0
+
     info = {
         "identifiers": {(DOMAIN, f"{iot_id}_ac_{internal_addr}")},
         "via_device": (DOMAIN, iot_id),
@@ -103,6 +105,14 @@ def build_device_info(coordinator: SlacCoordinator, device: dict) -> dict:
     }
     return info
 
+
+def _check_is_floor(device: dict, internal_addr: int) -> bool:
+    """Helper to determine if the unit is a floor/heating module."""
+
+    product_key = device.get("productKey", "")
+    model_config = PRODUCT_KEY.get(product_key) or {}
+
+    return internal_addr == 0 and model_config.get("has_floor", True)
 
 class SlacClimate(CoordinatorEntity, ClimateEntity):
     _attr_has_entity_name = False
@@ -123,7 +133,7 @@ class SlacClimate(CoordinatorEntity, ClimateEntity):
         self._unit_key = unit_key
         self._internal_addr = int(unit_key.replace("Info", ""))
         self._device = device
-        self._is_floor = self._internal_addr == 0
+        self._is_floor = _check_is_floor(self._device, self._internal_addr)
 
         self._attr_unique_id = f"slac_ac_{self._internal_addr}"
         self._attr_name = nick_name
@@ -131,7 +141,7 @@ class SlacClimate(CoordinatorEntity, ClimateEntity):
         self._attr_target_temperature_step = 0.5
         self._attr_min_temp = 16
         self._attr_max_temp = 30
-        self._attr_device_info = build_device_info(coordinator, device)
+        self._attr_device_info = build_device_info(coordinator, device, self._is_floor)
 
         if self._is_floor:
             self._attr_supported_features = (

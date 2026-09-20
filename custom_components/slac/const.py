@@ -13,6 +13,13 @@ CONF_ENABLE_WEATHER = "enable_weather"
 
 DEVICE_TYPE_AC = 0
 
+PRODUCT_KEY = {
+    "a1cffFWaOkM": {
+        "name": "多联机室内机",
+        "has_floor": False,
+    },
+}
+
 # ---- WorkMode 映射 (来自 APK DeviceStatusInfo_AC) ----
 AC_MODE_HA_MAP = {
     0: "auto",
